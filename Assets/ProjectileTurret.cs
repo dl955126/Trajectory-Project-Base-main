@@ -17,6 +17,8 @@ public class ProjectileTurret : MonoBehaviour
     [SerializeField] bool useLowAngle;
 
     List<Vector3> points = new List<Vector3>();
+    int recalcPath = 25;
+    float lineSmoothing = 0.1f;
 
     // Start is called before the first frame update
     void Start()
@@ -30,15 +32,58 @@ public class ProjectileTurret : MonoBehaviour
         TrackMouse();
         TurnBase();
         RotateGun();
+        DrawTrajectory();
+
 
         if (Input.GetButtonDown("Fire1"))
             Fire();
+
+
+
+        line.positionCount = points.Count;
+        for (int i = 0; i < line.positionCount; i++)
+        {
+            line.SetPosition(i, points[i]);
+        }
+    }
+
+    void DrawTrajectory()
+    {
+        points.Clear();
+
+        Vector3 v = barrelEnd.forward * projectileSpeed;
+        Vector3 currentPoint = barrelEnd.position;
+        
+        for (int i = 0; i < recalcPath; i++)
+        {
+            float t = i * lineSmoothing;
+
+            Vector3 displacement = v * t + 0.5f * -gravity * (t * t);
+            Vector3 nextPoint = barrelEnd.position + displacement;
+            //points.Add(barrelEnd.position + displacement);
+
+            if (Physics.Raycast(currentPoint, (nextPoint - currentPoint).normalized, out RaycastHit hit, Vector3.Distance(currentPoint, nextPoint), targetLayer))
+            {
+                points.Add(hit.point);
+                //Debug.Log("Raycast hit");
+                break;
+            }
+            else
+            {
+                points.Add(barrelEnd.position + displacement);
+            }
+
+            currentPoint = nextPoint;
+
+        }
+
     }
 
     void Fire()
     {
         GameObject projectile = Instantiate(projectilePrefab, barrelEnd.position, gun.transform.rotation);
         projectile.GetComponent<Rigidbody>().linearVelocity = projectileSpeed * barrelEnd.transform.forward;
+        Vector3 velocity = projectile.GetComponent<Rigidbody>().linearVelocity;
     }
 
     void TrackMouse()
